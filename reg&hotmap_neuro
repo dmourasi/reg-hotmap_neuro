@@ -1,0 +1,339 @@
+---
+title: "none"
+format: html
+editor: visual
+---
+
+## Quarto
+
+## Running Code
+
+
+```{r}
+
+# Carregar pacotes
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+
+library(readxl)
+
+
+
+```
+
+You can add options to executable code like this
+
+```{r}
+
+# Variáveis de interesse
+variaveis_DTI <- c(
+  "DTI_CC_mean_FA", "DTI_CC_mean_AD", "DTI_CC_mean_RD",
+  "DTI_R_CS_mean_FA", "DTI_R_CS_mean_AD", "DTI_R_CS_mean_RD",
+  "DTI_L_CS_mean_FA", "DTI_L_CS_mean_AD", "DTI_L_CS_mean_RD"
+)
+variaveis_clinicas <- c("Baixa_marcha", "Baixa_força")  # Ajustar nomes conforme os dados
+
+# Verificar as colunas no dataframe para ajustar os nomes
+colnames(data_fragil)
+
+# Função para criar gráficos de regressão por grupos (fragilidade ou sexo)
+criar_graficos_regressao <- function(data, grupo_coluna, grupo_valor, variaveis_DTI, variavel_clinica) {
+  # Filtrar os dados pelo grupo especificado
+  data_filtrado <- data %>% filter(!!sym(grupo_coluna) == grupo_valor)
+  
+  # Lista para armazenar gráficos
+  graficos <- list()
+  
+  # Loop pelas variáveis DTI
+  for (var in variaveis_DTI) {
+    # Criar gráfico de regressão
+    grafico <- ggplot(data_filtrado, aes_string(x = variavel_clinica, y = var)) +
+      geom_point(alpha = 0.6, size = 2, color = "blue") +
+      geom_smooth(method = "lm", se = TRUE, color = "red") +
+      labs(
+        title = paste("Regressão:", variavel_clinica, "vs", var, "\nGrupo:", grupo_valor),
+        x = variavel_clinica,
+        y = var
+      ) +
+      theme_minimal()
+    
+    # Adicionar gráfico à lista
+    graficos[[var]] <- grafico
+  }
+  
+  return(graficos)
+}
+
+# Gráficos para fragilidade
+graficos_fragilidade <- criar_graficos_regressao(
+  data_fragil, "Baixa_marcha", 1, variaveis_DTI, "Baixa_marcha"
+)
+
+# Gráficos para sexo masculino
+graficos_masculino <- criar_graficos_regressao(
+  data_fragil, "B.2_Sexo", 1, variaveis_DTI, "Baixa_força"
+)
+
+# Gráficos para sexo feminino
+graficos_feminino <- criar_graficos_regressao(
+  data_fragil, "B.2_Sexo", 2, variaveis_DTI, "Baixa_força"
+)
+
+# Combinar gráficos para visualização
+grid.arrange(
+  grobs = graficos_fragilidade,
+  ncol = 3,
+  top = "Gráficos de Regressão (Fragilidade)"
+)
+
+grid.arrange(
+  grobs = graficos_masculino,
+  ncol = 3,
+  top = "Gráficos de Regressão (Sexo Masculino)"
+)
+
+grid.arrange(
+  grobs = graficos_feminino,
+  ncol = 3,
+  top = "Gráficos de Regressão (Sexo Feminino)"
+)
+
+```
+
+```{r}
+# Carregar pacotes necessários
+library(ggplot2)
+library(dplyr)
+
+# Importar os dados
+
+# Selecionar variáveis de interesse
+variaveis_dti <- c("DTI_CC_mean_FA", "DTI_CC_mean_AD", "DTI_CC_mean_RD", 
+                   "DTI_R_CS_mean_FA", "DTI_R_CS_mean_AD", "DTI_R_CS_mean_RD",
+                   "DTI_L_CS_mean_FA", "DTI_L_CS_mean_AD", "DTI_L_CS_mean_RD")
+
+# Função para criar gráficos de regressão combinados para uma variável DTI específica
+criar_grafico_regressao <- function(dados, var_dti, x_var, grupo) {
+  ggplot(data = data_fragil, aes_string(x = x_var, y = var_dti, color = grupo)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(
+      title = paste("Regressão entre", x_var, "e", var_dti, "por", grupo),
+      x = x_var,
+      y = var_dti,
+      color = grupo
+    ) +
+    theme_minimal()
+}
+
+# Loop para criar gráficos de regressão para cada variável DTI x marcha, estratificado por fragilidade
+graficos_marcha <- lapply(variaveis_dti, function(var_dti) {
+  criar_grafico_regressao(dados, var_dti, "Baixa_marcha", "Class_fragilidade")
+})
+
+# Loop para criar gráficos de regressão para cada variável DTI x força, estratificado por fragilidade
+graficos_forca <- lapply(variaveis_dti, function(var_dti) {
+  criar_grafico_regressao(dados, var_dti, "Baixa_força", "Class_fragilidade")
+})
+
+# Exemplo de visualização do primeiro gráfico para marcha
+print(graficos_marcha[[1]])
+
+# Exemplo de visualização do primeiro gráfico para força
+print(graficos_forca[[1]])
+
+# Salvar gráficos em um PDF
+pdf("graficos_regressao_Class_fragilidade.pdf")
+for (g in graficos_marcha) print(g)
+for (g in graficos_forca) print(g)
+dev.off()
+
+```
+
+
+```{r}
+
+# Diretório para salvar as imagens (ajuste o caminho conforme necessário)
+output_dir <- "C:/Users/dmour/Downloads/graficos/"
+
+# Criar o diretório se ele não existir
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# Função para salvar gráficos de regressão
+salvar_graficos <- function(graficos, prefixo, output_dir, formato = "png", dpi = 300) {
+  for (i in seq_along(graficos)) {
+    # Nome do arquivo
+    arquivo <- paste0(output_dir, prefixo, "_grafico_", names(graficos)[i], ".", formato)
+    
+    # Salvar gráfico
+    ggsave(
+      filename = arquivo,
+      plot = graficos[[i]],
+      width = 8, height = 6, dpi = dpi
+    )
+  }
+}
+
+# Salvar gráficos de fragilidade
+salvar_graficos(
+  graficos = graficos_fragilidade,
+  prefixo = "fragilidade",
+  output_dir = output_dir
+)
+
+# Salvar gráficos de sexo masculino
+salvar_graficos(
+  graficos = graficos_masculino,
+  prefixo = "masculino",
+  output_dir = output_dir
+)
+
+# Salvar gráficos de sexo feminino
+salvar_graficos(
+  graficos = graficos_feminino,
+  prefixo = "feminino",
+  output_dir = output_dir
+)
+
+```
+
+
+```{r}
+
+# Carregar pacotes necessários
+library(ggplot2)
+library(dplyr)
+
+# Carregar os dados
+file_path <- "Gabriela_DTI_CORRETO_separado frágil e pré-frágil.xlsx"
+data  <- read_excel("Gabriela_DTI_CORRETO_separado frágil e pré-frágil.xlsx")
+
+# Variáveis de interesse
+dti_variables <- c(
+  "DTI_CC_mean_FA", "DTI_CC_mean_AD", "DTI_CC_mean_RD",
+  "DTI_R_CS_mean_FA", "DTI_R_CS_mean_AD", "DTI_R_CS_mean_RD",
+  "DTI_L_CS_mean_FA", "DTI_L_CS_mean_AD", "DTI_L_CS_mean_RD"
+)
+dependent_variables <- c("E.4_media_marcha", "D.4_media_forca")
+group_variable <- "Class_fragilidade"
+
+# Renomear variáveis para exibição
+rename_dti <- function(var) {
+  gsub("_mean|_", " ", var)
+}
+
+rename_dependent <- function(var) {
+  if (var == "E.4_media_marcha") return("Gait Speed")
+  if (var == "D.4_media_forca") return("Grip Strength")
+  return(var)
+}
+
+# Atualizar legenda da fragilidade
+data[[group_variable]] <- factor(
+  data[[group_variable]],
+  labels = c("Non-frail", "Frail")  # Renomeie conforme necessário
+)
+
+# Definir diretório para salvar os gráficos
+output_dir <- "graficos_regressao"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# Criar e salvar os gráficos com os novos nomes
+for (y_var in dependent_variables) {
+  for (x_var in dti_variables) {
+    # Nome formatado das variáveis
+    x_label <- rename_dti(x_var)
+    y_label <- rename_dependent(y_var)
+    title <- paste("Regression of", y_label, "on", x_label, "by Frail and Non-frail")
+    
+    # Criar o gráfico
+    plot <- ggplot(data, aes_string(x = x_var, y = y_var, color = group_variable)) +
+      geom_point(alpha = 0.7) +
+      geom_smooth(method = "lm", se = FALSE) +
+      labs(
+        x = x_label,
+        y = y_label,
+        color = "Fragility Status"
+      ) +
+      theme_bw()
+    
+    # Salvar o gráfico
+    file_name <- paste0(output_dir, "/", gsub(" ", "_", title), ".png")
+    ggsave(file_name, plot, width = 8, height = 6)
+  }
+}
+
+
+```
+
+
+```{r}
+
+# Variáveis de interesse
+dti_variables <- c(
+  "DTI_CC_mean_FA", "DTI_CC_mean_AD", "DTI_CC_mean_RD",
+  "DTI_R_CS_mean_FA", "DTI_R_CS_mean_AD", "DTI_R_CS_mean_RD",
+  "DTI_L_CS_mean_FA", "DTI_L_CS_mean_AD", "DTI_L_CS_mean_RD"
+)
+dependent_variables <- c("E.4_media_marcha", "D.4_media_forca")
+group_variable <- "Class_fragilidade"
+sex_variable <- "B.2_Sexo"  # Supondo que esta coluna represente o sexo
+
+# Garantir que sexo seja categórico
+data[[sex_variable]] <- factor(data[[sex_variable]], levels = c(1, 2), labels = c("Male", "Female"))
+
+# Renomear variáveis para exibição
+rename_dti <- function(var) {
+  gsub("_mean|_", " ", var)
+}
+
+rename_dependent <- function(var) {
+  if (var == "E.4_media_marcha") return("Gait Speed")
+  if (var == "D.4_media_forca") return("Grip Strength")
+  return(var)
+}
+
+# Atualizar legenda da fragilidade
+data[[group_variable]] <- factor(
+  data[[group_variable]],
+  labels = c("Non-frail", "Frail")  # Renomeie conforme necessário
+)
+
+# Diretório para salvar os gráficos
+output_dir <- "graficos_regressao_sexo"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# Criar os gráficos por sexo
+for (sex in levels(data[[sex_variable]])) {
+  sex_data <- subset(data, data[[sex_variable]] == sex)
+  
+  for (y_var in dependent_variables) {
+    for (x_var in dti_variables) {
+      # Nome formatado das variáveis
+      x_label <- rename_dti(x_var)
+      y_label <- rename_dependent(y_var)
+      title <- paste("Regression of", y_label, "on", x_label, "by Frail and Non-frail (", sex, ")", sep = "")
+      
+      # Criar o gráfico
+      plot <- ggplot(sex_data, aes_string(x = x_var, y = y_var, color = group_variable)) +
+        geom_point(alpha = 0.7) +
+        geom_smooth(method = "lm", se = FALSE) +
+        labs(
+          title = title,
+          x = x_label,
+          y = y_label,
+          color = "Fragility Status"
+        ) +
+        theme_bw()
+
+      
+      # Caminho para salvar o gráfico
+      output_file <- file.path(output_dir, paste0(gsub("[^A-Za-z0-9 ]", "", title), ".png"))
+      
+      # Salvar o gráfico
+      ggsave(output_file, plot, width = 8, height = 6)
+    }
+  }
+}
+```
